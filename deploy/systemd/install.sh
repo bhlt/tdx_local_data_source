@@ -17,6 +17,7 @@ INSTALL_DIR="${TICK_PANEL_HOME:-$HOME/tick-panel}"
 HOST="${HOST:-0.0.0.0}"
 PORT="${PORT:-18082}"
 PYTHON="${PYTHON:-python3}"
+PANEL_API="${PANEL_API:-http://127.0.0.1:3018}"
 TOKEN="${PANEL_TOKEN:-}"
 
 if [[ -z "$TOKEN" ]]; then
@@ -53,6 +54,36 @@ echo "==> 启动 systemd user 服务"
 systemctl --user daemon-reload
 systemctl --user enable --now tdx-panel-gateway
 loginctl enable-linger "$USER" >/dev/null 2>&1 || true
+
+# 收盘后刷新一次行情：日线管道会重算 enriched，可能清空 quote_ts，
+# 刷新可让面板把 quote_ts 写回，避免自选显示「时间未确认」。
+CURL_BIN="$(command -v curl || true)"
+if [[ -n "$CURL_BIN" ]]; then
+  cat > "$UNIT_DIR/tdx-panel-refresh.service" <<EOF
+[Unit]
+Description=Refresh tick-stock-panel quotes after daily pipeline
+
+[Service]
+Type=oneshot
+ExecStart=$CURL_BIN -fsS -X POST $PANEL_API/api/intraday/refresh
+EOF
+  cat > "$UNIT_DIR/tdx-panel-refresh.timer" <<EOF
+[Unit]
+Description=Refresh panel quotes after close
+
+[Timer]
+OnCalendar=Mon..Fri 15:40
+OnCalendar=Mon..Fri 16:10
+Unit=tdx-panel-refresh.service
+
+[Install]
+WantedBy=timers.target
+EOF
+  systemctl --user daemon-reload
+  systemctl --user enable --now tdx-panel-refresh.timer
+else
+  echo "WARN: 未找到 curl，跳过收盘刷新定时器（可手动 POST $PANEL_API/api/intraday/refresh）" >&2
+fi
 
 sleep 2
 if command -v curl >/dev/null 2>&1; then

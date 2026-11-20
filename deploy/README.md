@@ -24,8 +24,11 @@ PANEL_TOKEN=your-secret PORT=18082 TICK_PANEL_HOME=~/tick-panel \
 4. 生成 `~/.config/systemd/user/tdx-panel-gateway.service`
 5. `systemctl --user enable --now`，并执行 `loginctl enable-linger`
 6. 调用 `/panel/health` 自检
+7. 安装 `tdx-panel-refresh.timer`：工作日 15:40 / 16:10 调用 `/api/intraday/refresh`
 
-模板见 `systemd/tdx-panel-gateway.service`、`env/gateway.env.example`。
+> 为什么需要收盘刷新：面板的日线管道重算 enriched 时可能清空 `quote_ts`，导致自选列表显示「时间未确认」。刷新会让实时链路把 `quote_ts` 写回。
+
+模板见 `systemd/tdx-panel-gateway.service`、`systemd/tdx-panel-refresh.timer`、`env/gateway.env.example`。
 
 ## Windows（采集代理）
 

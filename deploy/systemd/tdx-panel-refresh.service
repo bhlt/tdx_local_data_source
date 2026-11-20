@@ -1,0 +1,6 @@
+[Unit]
+Description=Refresh tick-stock-panel quotes after daily pipeline
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/curl -fsS -X POST http://127.0.0.1:3018/api/intraday/refresh

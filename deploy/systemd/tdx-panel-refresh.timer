@@ -1,0 +1,10 @@
+[Unit]
+Description=Refresh panel quotes after close
+
+[Timer]
+OnCalendar=Mon..Fri 15:40
+OnCalendar=Mon..Fri 16:10
+Unit=tdx-panel-refresh.service
+
+[Install]
+WantedBy=timers.target

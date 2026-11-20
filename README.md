@@ -111,7 +111,7 @@ curl -X PUT  http://127.0.0.1:3018/api/settings/preferences/data-providers \
 
 | 现象 | 处理 |
 |---|---|
-| 自选显示「时间未确认」 | YAML realtime.field_map 补 `timestamp: timestamp`，reload |
+| 自选显示「时间未确认」 | 收盘后日线管道重算 enriched 可能清空 `quote_ts`；执行 `POST /api/intraday/refresh`（安装脚本已带 15:40/16:10 定时刷新）。长期修复需面板在 `compute_enriched` 保留 `quote_ts` |
 | 自选显示「更新延迟」 | 确认代理在发 `panel_beat`；检查代理是否卡住 |
 | 面板实时为空 | `curl /panel/health` 看 `panel_state`；为 0 则检查代理与 token |
 | 日线全部为空 | 检查网关日期过滤是否按 `YYYY-MM-DD` 比较 |

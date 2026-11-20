@@ -241,11 +241,20 @@ class Handler(BaseHTTPRequestHandler):
                     sql += " AND time <= ?"
                     args.append(end[:10] if period == "1d" else end[:19])
                 sql += " ORDER BY time"
-                rows = [{"symbol": c, "datetime" if period == "1m" else "date": t,
-                         "open": o, "high": h, "low": l, "close": cl,
-                         "volume": v, "amount": a,
-                         **({"freq": "1m"} if period == "1m" else {})}
-                        for c, t, o, h, l, cl, v, a in conn.execute(sql, args)]
+                today = datetime.now().strftime("%Y-%m-%d")
+                now_ms = int(time.time() * 1000)
+                rows = []
+                for c, t, o, h, l, cl, v, a in conn.execute(sql, args):
+                    row = {"symbol": c, "datetime" if period == "1m" else "date": t,
+                           "open": o, "high": h, "low": l, "close": cl,
+                           "volume": v, "amount": a}
+                    if period == "1m":
+                        row["freq"] = "1m"
+                    elif t == today:
+                        # 当日日线带上快照时间，面板据此写入 quote_ts；
+                        # 历史日线不带，避免被误判为盘中快照。
+                        row["timestamp"] = now_ms
+                    rows.append(row)
                 return self._send({"ok": True, "count": len(rows), "data": {"rows": rows}})
             if u.path in ("/panel/health", "/health"):
                 st = conn.execute("SELECT COUNT(*) FROM panel_state").fetchone()[0]
