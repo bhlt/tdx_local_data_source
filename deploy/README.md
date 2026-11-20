@@ -48,6 +48,33 @@ powershell -ExecutionPolicy Bypass -File deploy\windows\install-startup.ps1 `
 2. 在用户启动目录放置 `tdx-panel-push.cmd`
 3. 立即启动一次（`-NoStart` 可跳过）
 
+### 全市场分钟落库
+
+代理默认带 `--minute-archive-at 08:30,15:45`，每天异步把全市场 1m/5m 落成本地 Parquet：
+
+```
+data/minute/1m/date=2026-11-19/part.parquet
+data/minute/5m/date=2026-11-19/part.parquet
+```
+
+- 列：`symbol, datetime, open, high, low, close, volume, amount`
+- 单位已换算成**手 / 元**，与日线一致
+- 全市场单日约 134 万行（1m，约 14 MB）、27 万行（5m，约 3.4 MB）
+- 全市场 1m 取数约 15 分钟，放在子进程跑，不阻塞实时推送
+- 客户端分钟线约保留 3 个月，当天数据要等次日凌晨下载，所以按“缺失分区”回补最近 3 天
+
+手动回补全部本地历史：
+
+```powershell
+python tools/64_archive_minute.py --days 90 --out data/minute
+# 只补 5 分钟线
+python tools/64_archive_minute.py --periods 5m --days 90
+```
+
+依赖 `pyarrow`（Parquet）。没有时脚本自动退回 `.csv.gz`（体积约 5 倍）。
+
+> 落库只做本地研究，不推给面板；面板的 minute 数据集仍是代理实时合成的 500 只。
+
 > 使用用户启动目录而不是计划任务，是因为创建 ONLOGON 计划任务通常需要管理员权限。
 
 ## 面板（tick-stock-panel）

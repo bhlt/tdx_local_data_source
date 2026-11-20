@@ -87,6 +87,7 @@ curl -X PUT  http://127.0.0.1:3018/api/settings/preferences/data-providers \
 | depth5 | 10s | asks/bids = `[[价, 手]×5]` |
 | minute | 每分钟 | symbol, datetime, OHLC, volume, amount |
 | daily | 15:10 推 / 15:35 拉 | symbol, date, OHLC, volume, amount |
+| minute archive | 每日 08:30 / 15:45 | 全市场 1m/5m 落 Parquet，历史约 3 个月 |
 
 - `volume` 单位手、`amount` 单位元、`change_pct` 小数
 - **`timestamp` 必须在 YAML `field_map` 中映射**，否则面板 `quote_ts` 为空，自选列表显示「时间未确认」
@@ -98,7 +99,8 @@ curl -X PUT  http://127.0.0.1:3018/api/settings/preferences/data-providers \
 - **幂等**：`batch_id` 去重；`(code, ts)` / `(code, period, time)` 主键
 - **停牌兜底**：无快照标的用 `get_pricevol` 补齐，保证全市场行数
 - **当日 1 分钟线**：本地 1m 只到上一交易日，当日由 6s 快照合成（标签对齐通达信）
-- **零第三方依赖**：网关与代理都只用标准库
+- **分钟落库**：`tools/64_archive_minute.py` 把全市场 1m/5m 按日写成 Parquet；客户端分钟线约保留 3 个月，当天要等次日凌晨下载，因此按“缺失分区”回补
+- **零第三方依赖**：网关与代理都只用标准库（分钟落库可选依赖 `pyarrow`）
 
 ## 已知限制
 
@@ -111,6 +113,8 @@ curl -X PUT  http://127.0.0.1:3018/api/settings/preferences/data-providers \
 
 | 现象 | 处理 |
 |---|---|
+| 分钟落库报「无数据」 | 客户端当天分钟要等次日凌晨下载；用 `--date` 指定已下载的交易日重试 |
+| 分钟落库缺 `pyarrow` | `python -m pip install pyarrow`；或 `--format csv` 输出 `.csv.gz` |
 | 涨停梯队/自选大量显示「名称待同步」 | tickflow 标的维表单个交易所超时（常见沪市），`instruments.parquet` 只剩 SZ+BJ。安装脚本已带 `tdx-panel-instruments.timer`（交易日 09:25/15:50）自动补齐；手工执行见 `deploy/README.md` |
 | 沪市股票换手率/市值为空 | 同上，`float_shares` 随维表一起丢失；补齐维表后重算 enriched 或等次日管道 |
 | 自选显示「时间未确认」 | 收盘后日线管道重算 enriched 可能清空 `quote_ts`；执行 `POST /api/intraday/refresh`（安装脚本已带 15:40/16:10 定时刷新）。长期修复需面板在 `compute_enriched` 保留 `quote_ts` |

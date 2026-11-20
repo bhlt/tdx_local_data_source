@@ -25,6 +25,7 @@ import argparse
 import gzip
 import json
 import os
+import subprocess
 import sys
 import time
 import uuid
@@ -215,6 +216,30 @@ def push_daily(receiver: str, token: str, codes: list[str], count: int) -> int:
     return len(drows)
 
 
+def start_minute_archive(args) -> subprocess.Popen:
+    """异步启动全市场分钟落库，不阻塞实时推送。"""
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    candidates = [
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "64_archive_minute.py"),
+        os.path.join(root, "scripts", "64_archive_minute.py"),
+        os.path.join(root, "tools", "64_archive_minute.py"),
+    ]
+    script = next((p for p in candidates if os.path.exists(p)), None)
+    if not script:
+        raise FileNotFoundError("64_archive_minute.py")
+    out_dir = args.minute_archive_out
+    if not os.path.isabs(out_dir):
+        out_dir = os.path.join(root, out_dir)
+    log_dir = os.path.join(root, "reports")
+    os.makedirs(log_dir, exist_ok=True)
+    log = open(os.path.join(log_dir, "minute_archive.log"), "a", encoding="utf-8")
+    cmd = [sys.executable, script,
+           "--days", str(args.minute_archive_days),
+           "--out", out_dir]
+    print(f"minute archive start: {' '.join(cmd)}")
+    return subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT, cwd=root)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--receiver", required=True)
@@ -238,6 +263,12 @@ def main() -> int:
     ap.add_argument("--daily-codes", default="", help="额外日线代码，逗号分隔")
     ap.add_argument("--daily-auto", action="store_true", help="每天固定时间自动补当日日线")
     ap.add_argument("--daily-at", default="15:10", help="自动补日线时间 HH:MM")
+    ap.add_argument("--minute-archive-at", default="",
+                    help="每天固定时间异步落库全市场分钟线（HH:MM，留空关闭）")
+    ap.add_argument("--minute-archive-days", type=int, default=5,
+                    help="分钟落库回补最近 N 天内的缺失分区")
+    ap.add_argument("--minute-archive-out", default="data/minute",
+                    help="分钟落库输出目录")
     ap.add_argument("--once", action="store_true")
     args = ap.parse_args()
 
@@ -345,6 +376,8 @@ def main() -> int:
     minute_set = set(minute_codes)
     next_depth = 0.0
     last_daily = ""
+    last_archive = ""
+    archive_proc: subprocess.Popen | None = None
     cycle = 0
     try:
         while True:
@@ -408,6 +441,25 @@ def main() -> int:
                     print(f"auto daily push start ({today} {args.daily_at})")
                     push_daily(args.receiver, args.token, daily_codes, args.daily_count)
                     last_daily = today
+
+            # 分钟线落库：客户端当天分钟要等次日凌晨下载，因此按“缺失分区”回补。
+            # 放到子进程跑（全市场 1m 约 15 分钟），不阻塞实时推送。
+            # 支持多个时间点（如 08:30,15:45），每次只跑最近的一个。
+            if args.minute_archive_at:
+                today = datetime.now().strftime("%Y-%m-%d")
+                now_hm = datetime.now().strftime("%H:%M")
+                slots = [s.strip() for s in str(args.minute_archive_at).split(",") if s.strip()]
+                due = [s for s in slots
+                       if last_archive != f"{today} {s}" and now_hm >= s]
+                if due:
+                    if archive_proc is not None and archive_proc.poll() is None:
+                        print("minute archive still running, skip this round")
+                    else:
+                        try:
+                            archive_proc = start_minute_archive(args)
+                        except Exception as exc:  # noqa: BLE001
+                            print(f"minute archive start failed: {exc}")
+                    last_archive = f"{today} {due[-1]}"
 
             if args.once:
                 break

@@ -40,7 +40,7 @@ $reports = Join-Path $RepoRoot "reports"
 New-Item -ItemType Directory -Force -Path $reports | Out-Null
 $logPath = Join-Path $reports "panel_push.log"
 
-$runLine = '"{0}" "{1}" --receiver {2} --market 5 --include-markets 9,31 --interval 6 --depth-market 24 --depth-limit 500 --minute-market 24 --minute-limit 500 --daily-auto --daily-markets 5,31,9 --daily-codes 000001.SH,000002.SH,399107.SZ --daily-count 30 --no-seed >> "{3}" 2>&1' -f '%PY%', $agent, $Receiver, $logPath
+$runLine = '"{0}" "{1}" --receiver {2} --market 5 --include-markets 9,31 --interval 6 --depth-market 24 --depth-limit 500 --minute-market 24 --minute-limit 500 --daily-auto --daily-markets 5,31,9 --daily-codes 000001.SH,000002.SH,399107.SZ --daily-count 30 --no-seed --minute-archive-at 08:30,15:45 --minute-archive-days 3 --minute-archive-out data/minute >> "{3}" 2>&1' -f '%PY%', $agent, $Receiver, $logPath
 
 $lines = @(
   '@echo off',
