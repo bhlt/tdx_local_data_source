@@ -1,0 +1,13 @@
+[Unit]
+Description=Backfill tick-stock-panel instruments after provider syncs
+
+[Timer]
+# 面板 09:10 / 15:35 同步维表，单交易所超时会整块缺失。
+# 这里在开盘前和收盘后各补一次；Persistent 让关机错过时补跑。
+OnCalendar=Mon..Fri 09:25
+OnCalendar=Mon..Fri 15:50
+Persistent=true
+Unit=tdx-panel-instruments.service
+
+[Install]
+WantedBy=timers.target

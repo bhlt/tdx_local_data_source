@@ -27,6 +27,8 @@ fi
 echo "==> 安装目录: $INSTALL_DIR"
 mkdir -p "$INSTALL_DIR/bin" "$INSTALL_DIR/data" "$INSTALL_DIR/logs"
 install -m 0644 "$REPO_ROOT/gateway/53_panel_gateway.py" "$INSTALL_DIR/bin/53_panel_gateway.py"
+install -m 0755 "$REPO_ROOT/tools/63_panel_instruments_sync.py" "$INSTALL_DIR/bin/63_panel_instruments_sync.py"
+install -m 0755 "$REPO_ROOT/deploy/tick-stock-panel/run_instruments_sync.sh" "$INSTALL_DIR/bin/run_instruments_sync.sh"
 
 umask 077
 {
@@ -84,6 +86,33 @@ EOF
 else
   echo "WARN: 未找到 curl，跳过收盘刷新定时器（可手动 POST $PANEL_API/api/intraday/refresh）" >&2
 fi
+
+# 面板每天 09:10 / 15:35 同步标的维表；单个交易所超时会整块缺失，
+# 表现为「名称待同步」、换手率/市值为空。交易日 09:25 / 15:50 补一次。
+cat > "$UNIT_DIR/tdx-panel-instruments.service" <<EOF
+[Unit]
+Description=Backfill tick-stock-panel instruments (names and shares)
+
+[Service]
+Type=oneshot
+EnvironmentFile=$INSTALL_DIR/gateway.env
+ExecStart=$INSTALL_DIR/bin/run_instruments_sync.sh
+EOF
+cat > "$UNIT_DIR/tdx-panel-instruments.timer" <<EOF
+[Unit]
+Description=Backfill tick-stock-panel instruments after provider syncs
+
+[Timer]
+OnCalendar=Mon..Fri 09:25
+OnCalendar=Mon..Fri 15:50
+Persistent=true
+Unit=tdx-panel-instruments.service
+
+[Install]
+WantedBy=timers.target
+EOF
+systemctl --user daemon-reload
+systemctl --user enable --now tdx-panel-instruments.timer
 
 sleep 2
 if command -v curl >/dev/null 2>&1; then

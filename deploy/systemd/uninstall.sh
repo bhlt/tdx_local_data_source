@@ -4,11 +4,14 @@
 #   ./deploy/systemd/uninstall.sh --purge    # 同时删除 ~/tick-panel
 set -euo pipefail
 
+systemctl --user disable --now tdx-panel-instruments.timer 2>/dev/null || true
 systemctl --user disable --now tdx-panel-refresh.timer 2>/dev/null || true
 systemctl --user disable --now tdx-panel-gateway 2>/dev/null || true
 rm -f "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/tdx-panel-gateway.service"
 rm -f "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/tdx-panel-refresh.service"
 rm -f "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/tdx-panel-refresh.timer"
+rm -f "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/tdx-panel-instruments.service"
+rm -f "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/tdx-panel-instruments.timer"
 systemctl --user daemon-reload
 
 if [[ "${1:-}" == "--purge" ]]; then

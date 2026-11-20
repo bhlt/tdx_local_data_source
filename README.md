@@ -111,6 +111,8 @@ curl -X PUT  http://127.0.0.1:3018/api/settings/preferences/data-providers \
 
 | 现象 | 处理 |
 |---|---|
+| 涨停梯队/自选大量显示「名称待同步」 | tickflow 标的维表单个交易所超时（常见沪市），`instruments.parquet` 只剩 SZ+BJ。安装脚本已带 `tdx-panel-instruments.timer`（交易日 09:25/15:50）自动补齐；手工执行见 `deploy/README.md` |
+| 沪市股票换手率/市值为空 | 同上，`float_shares` 随维表一起丢失；补齐维表后重算 enriched 或等次日管道 |
 | 自选显示「时间未确认」 | 收盘后日线管道重算 enriched 可能清空 `quote_ts`；执行 `POST /api/intraday/refresh`（安装脚本已带 15:40/16:10 定时刷新）。长期修复需面板在 `compute_enriched` 保留 `quote_ts` |
 | 自选显示「更新延迟」 | 确认代理在发 `panel_beat`；检查代理是否卡住 |
 | 面板实时为空 | `curl /panel/health` 看 `panel_state`；为 0 则检查代理与 token |

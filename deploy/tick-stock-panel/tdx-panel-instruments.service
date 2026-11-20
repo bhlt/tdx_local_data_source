@@ -1,0 +1,7 @@
+[Unit]
+Description=Backfill tick-stock-panel instruments (names and shares)
+
+[Service]
+Type=oneshot
+EnvironmentFile=%h/tick-panel/gateway.env
+ExecStart=%h/tick-panel/bin/run_instruments_sync.sh
