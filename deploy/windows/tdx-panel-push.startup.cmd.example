@@ -1,0 +1,4 @@
+@echo off
+REM 由 deploy/windows/install-startup.ps1 生成到启动目录。
+REM 手动使用时，把下面的路径改成你的 agent\52_push_panel.cmd 绝对路径。
+start "" /min "D:\tdx_local_data_source\agent\52_push_panel.cmd"

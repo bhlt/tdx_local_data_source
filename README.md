@@ -17,6 +17,21 @@
 
 ## 快速开始
 
+推荐直接用部署脚本：
+
+```bash
+# Linux 网关（自动建目录、token、systemd、linger）
+./deploy/systemd/install.sh
+```
+
+```powershell
+# Windows 采集代理（生成 .cmd + 开机自启）
+powershell -ExecutionPolicy Bypass -File deploy\windows\install-startup.ps1 `
+  -Token <token> -Receiver http://<linux-ip>:18082
+```
+
+手动步骤见下文。
+
 ### 1. Linux：启动网关
 
 ```bash
