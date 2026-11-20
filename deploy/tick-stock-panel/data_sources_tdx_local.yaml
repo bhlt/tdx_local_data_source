@@ -1,0 +1,85 @@
+# 放到 tick-stock-panel 的 data/data_sources/tdx_local.yaml
+# 数据来自本机 18082 的 53_panel_gateway.py（由 Windows 侧 52_push_panel.py 推送）
+# 放入后执行：POST /api/settings/data-sources/reload
+#
+# 注意：
+#   - field_map 必填（loader 用 field_map.values() 校验必填列），不能省略
+#   - 左侧 = 上游 JSON 字段名，右侧 = 内部标准列名
+#   - 本服务返回的数值已是：volume=手、amount=元、change_pct=小数
+#   - realtime 的 field_map 必须包含 timestamp；漏掉会让面板 quote_ts 为空，
+#     自选列表显示「时间未确认」
+#   - 若不想鉴权，删掉 auth 段；否则 PANEL_TOKEN 需在进程环境或项目根 .env 中
+name: tdx_local
+display_name: "通达信本地推送"
+auth:
+  type: header
+  header: X-Api-Key
+  token_env: PANEL_TOKEN
+
+datasets:
+  realtime:
+    url: http://127.0.0.1:18082/panel/realtime
+    method: GET
+    response_path: data
+    pct_unit: decimal
+    field_map:
+      symbol: symbol
+      last_price: last_price
+      prev_close: prev_close
+      open: open
+      high: high
+      low: low
+      volume: volume
+      amount: amount
+      timestamp: timestamp
+      name: name
+
+  depth5:
+    url: http://127.0.0.1:18082/panel/depth5
+    method: GET
+    response_path: data
+    symbols_param: symbols
+    batch: 200
+    rpm: 120
+    field_map:
+      symbol: symbol
+      asks: asks
+      bids: bids
+
+  minute:
+    url: http://127.0.0.1:18082/panel/minute
+    method: GET
+    response_path: data.rows
+    symbols_param: symbols
+    start_param: start_time
+    end_param: end_time
+    batch: 200
+    rpm: 120
+    field_map:
+      symbol: symbol
+      datetime: datetime
+      open: open
+      high: high
+      low: low
+      close: close
+      volume: volume
+      amount: amount
+
+  daily:
+    url: http://127.0.0.1:18082/panel/daily
+    method: GET
+    response_path: data.rows
+    symbols_param: symbols
+    start_param: start_time
+    end_param: end_time
+    batch: 200
+    rpm: 120
+    field_map:
+      symbol: symbol
+      date: date
+      open: open
+      high: high
+      low: low
+      close: close
+      volume: volume
+      amount: amount

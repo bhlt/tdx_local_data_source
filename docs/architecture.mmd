@@ -1,0 +1,30 @@
+flowchart TB
+  subgraph W["① Windows 采集端"]
+    T["通达信金融终端 TdxW<br/>TQ 127.0.0.1:17709（仅本机）<br/>tqcenter 1.1.0"]
+    A["52_push_panel.py<br/>7483 只 = 股票 5584 + 指数 100 + ETF 1799<br/>get_pricevol 6s 增量 · snapshot 种子<br/>depth 10s · 1m 快照合成 · daily 15:10"]
+    T -->|ctypes| A
+  end
+
+  subgraph L["② SC_Linux 宿主机"]
+    S["systemd (user)<br/>tdx-panel-gateway.service<br/>Restart=always · Linger=yes"]
+    G["53_panel_gateway.py<br/>校验 / batch_id 幂等 / gzip<br/>维护 high-low 与成交额<br/>HTTP API :18082"]
+    D[("SQLite panel.db<br/>panel_state 7483<br/>depth_state 500<br/>bars 561812")]
+    S --> G
+    G <-->|写 / 读| D
+  end
+
+  subgraph C["③ Docker 容器 tick-stock-panel-app"]
+    P["GenericHTTPProvider<br/>data/data_sources/tdx_local.yaml<br/>field_map · pct_unit=decimal"]
+    V["服务层<br/>quote_service（实时 / live 分区）<br/>depth_service（涨跌停五档）<br/>kline_sync（分钟 / 日线）"]
+    R["存储<br/>Parquet + DuckDB<br/>kline_daily / kline_minute"]
+    F["FastAPI :3018<br/>REST /api/*<br/>SSE /api/intraday/stream"]
+    P --> V --> R --> F
+  end
+
+  B["④ 浏览器<br/>React 前端：报价墙 · 分时 · 五档 · 自选"]
+
+  A ==>|"HTTP POST /ingest · gzip · X-Api-Key<br/>LAN 192.168.0.198:18082"| G
+  G -.->|"HTTP GET（拉取）<br/>实时 10s · 五档 10s · 分钟按需 · 日线 15:35<br/>容器 → 172.25.0.1:18082"| P
+  F -.->|"SSE 事件推送"| B
+
+  N["注：逐笔 tick 不在本链路（本地客户端不提供）"]

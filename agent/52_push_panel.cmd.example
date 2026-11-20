@@ -1,0 +1,17 @@
+@echo off
+REM ============================================================
+REM 复制本文件为 52_push_panel.cmd，然后按需修改下面三项：
+REM   TDX_PYPLUGINS 指到你的通达信安装目录
+REM   PANEL_TOKEN   与 Linux 网关 gateway.env 中一致
+REM   PY            Python 解释器（建议绝对路径）
+REM ============================================================
+set TDX_PYPLUGINS=C:\new_tdx64\PYPlugins\user
+set PANEL_TOKEN=change-me
+set PYTHONIOENCODING=utf-8
+set PYTHONUNBUFFERED=1
+set PY=python
+
+:loop
+"%PY%" "%~dp052_push_panel.py" --receiver http://192.168.0.198:18082 --market 5 --include-markets 9,31 --interval 6 --depth-market 24 --depth-limit 500 --minute-market 24 --minute-limit 500 --daily-auto --daily-markets 5,31,9 --daily-codes 000001.SH,000002.SH,399107.SZ --daily-count 30 --no-seed >> "%~dp0panel_push.log" 2>&1
+timeout /t 10 /nobreak >nul
+goto loop

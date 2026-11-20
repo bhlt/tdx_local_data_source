@@ -1,0 +1,193 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1900" height="1390" viewBox="0 0 1900 1390">
+  <defs>
+    <marker id="arrBlue" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 z" fill="#2563EB"/>
+    </marker>
+    <marker id="arrGreen" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 z" fill="#16A34A"/>
+    </marker>
+    <marker id="arrPurple" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 z" fill="#9333EA"/>
+    </marker>
+    <marker id="arrGray" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 z" fill="#64748B"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1900" height="1390" fill="#FAFBFC"/>
+
+  <text x="60" y="52" style="font:700 30px 'Microsoft YaHei','Segoe UI',sans-serif;fill:#0F172A">TdxQuant → tick-stock-panel 数据网关架构</text>
+  <text x="60" y="82" style="font:14px 'Microsoft YaHei','Segoe UI',sans-serif;fill:#64748B">推送 + 网关 + 拉取三段式 · 不消耗 tdxaidata 积分 · 部署于 2026-11-20</text>
+
+  <!-- ================= Band 1: Windows ================= -->
+  <rect x="60" y="100" width="1780" height="240" rx="14" fill="#EFF5FF" stroke="#BBD3F8" stroke-width="1.5"/>
+  <text x="82" y="130" style="font:700 19px 'Microsoft YaHei';fill:#1E3A8A">① Windows 采集端</text>
+
+  <!-- terminal -->
+  <rect x="100" y="150" width="420" height="165" rx="10" fill="#FFFFFF" stroke="#93B4E8" stroke-width="1.3"/>
+  <text x="120" y="177" style="font:600 16px 'Microsoft YaHei';fill:#0F172A">通达信金融终端 TdxW</text>
+  <text x="120" y="203" style="font:13px 'Microsoft YaHei';fill:#334155">TQ 接口：127.0.0.1:17709（仅本机）</text>
+  <text x="120" y="226" style="font:13px 'Microsoft YaHei';fill:#334155">tqcenter 1.1.0（客户端自带）</text>
+  <text x="120" y="249" style="font:13px 'Microsoft YaHei';fill:#334155">必须已登录；单进程使用</text>
+  <text x="120" y="278" style="font:12px Consolas;fill:#64748B">PYPlugins/user/tqcenter.py</text>
+  <text x="120" y="299" style="font:12px Consolas;fill:#64748B">TPythClient.dll</text>
+
+  <!-- ctypes arrow -->
+  <line x1="520" y1="232" x2="556" y2="232" stroke="#64748B" stroke-width="1.6" marker-end="url(#arrGray)"/>
+  <text x="542" y="214" text-anchor="middle" style="font:10px Consolas;fill:#64748B">ctypes</text>
+
+  <!-- agent -->
+  <rect x="565" y="150" width="740" height="165" rx="10" fill="#FFFFFF" stroke="#93B4E8" stroke-width="1.3"/>
+  <text x="585" y="177" style="font:600 16px 'Microsoft YaHei';fill:#0F172A">52_push_panel.py 采集代理</text>
+  <text x="585" y="204" style="font:13px 'Microsoft YaHei';fill:#334155">全市场 7,483 只 = 股票 5,584 + 指数 100 + ETF 1,799</text>
+  <text x="585" y="227" style="font:13px 'Microsoft YaHei';fill:#334155">get_pricevol 6s → 只推变化行（~42ms/批）</text>
+  <text x="585" y="250" style="font:13px 'Microsoft YaHei';fill:#334155">get_market_snapshot 种子（8 线程，~25s）</text>
+  <text x="585" y="273" style="font:13px 'Microsoft YaHei';fill:#334155">depth 500 只 / 10s · 1m 由 6s 快照合成 · daily 15:10</text>
+  <text x="585" y="296" style="font:12px Consolas;fill:#64748B">gzip + batch_id 幂等 + X-Api-Key</text>
+
+  <!-- rhythm -->
+  <rect x="1335" y="150" width="480" height="165" rx="10" fill="#FFFFFF" stroke="#C7D9F2" stroke-width="1.2"/>
+  <text x="1355" y="177" style="font:600 15px 'Microsoft YaHei';fill:#1E3A8A">推送节奏与自启</text>
+  <text x="1355" y="203" style="font:13px 'Microsoft YaHei';fill:#334155">实时 6s · 五档 10s · 1m 60s · 日线 15:10</text>
+  <text x="1355" y="226" style="font:13px 'Microsoft YaHei';fill:#334155">失败不无限重试，下一轮增量覆盖</text>
+  <text x="1355" y="249" style="font:13px 'Microsoft YaHei';fill:#334155">崩溃后 10s 自动重启（.cmd 循环）</text>
+  <text x="1355" y="278" style="font:12px Consolas;fill:#64748B">Startup\tdx-panel-push.cmd</text>
+  <text x="1355" y="299" style="font:12px Consolas;fill:#64748B">reports\panel_push.log</text>
+
+  <!-- push arrow -->
+  <line x1="900" y1="340" x2="900" y2="418" stroke="#2563EB" stroke-width="4" marker-end="url(#arrBlue)"/>
+  <text x="925" y="372" style="font:600 15px Consolas;fill:#1D4ED8">HTTP POST /ingest · gzip · X-Api-Key</text>
+  <text x="925" y="396" style="font:13px Consolas;fill:#1D4ED8">LAN 192.168.0.198:18082</text>
+
+  <!-- ================= Band 2: Linux host ================= -->
+  <rect x="60" y="425" width="1780" height="350" rx="14" fill="#ECF8F0" stroke="#B3DEC2" stroke-width="1.5"/>
+  <text x="82" y="455" style="font:700 19px 'Microsoft YaHei';fill:#166534">② SC_Linux 宿主机</text>
+
+  <!-- systemd -->
+  <rect x="100" y="475" width="340" height="270" rx="10" fill="#FFFFFF" stroke="#9CCBAF" stroke-width="1.3"/>
+  <text x="120" y="502" style="font:600 16px 'Microsoft YaHei';fill:#0F172A">systemd（user）</text>
+  <text x="120" y="528" style="font:13px 'Microsoft YaHei';fill:#334155">tdx-panel-gateway.service</text>
+  <text x="120" y="551" style="font:13px 'Microsoft YaHei';fill:#334155">Restart=always</text>
+  <text x="120" y="574" style="font:13px 'Microsoft YaHei';fill:#334155">Linger=yes（退出登录仍运行）</text>
+  <text x="120" y="603" style="font:12px Consolas;fill:#64748B">~/tick-panel/bin/</text>
+  <text x="120" y="624" style="font:12px Consolas;fill:#64748B">  53_panel_gateway.py</text>
+  <text x="120" y="645" style="font:12px Consolas;fill:#64748B">~/tick-panel/data/</text>
+  <text x="120" y="666" style="font:12px Consolas;fill:#64748B">  panel.db</text>
+  <text x="120" y="687" style="font:12px Consolas;fill:#64748B">~/tick-panel/gateway.env</text>
+  <text x="120" y="708" style="font:12px Consolas;fill:#64748B">  PANEL_TOKEN（600）</text>
+
+  <!-- gateway -->
+  <rect x="475" y="475" width="520" height="270" rx="10" fill="#FFFFFF" stroke="#9CCBAF" stroke-width="1.3"/>
+  <text x="495" y="502" style="font:600 16px 'Microsoft YaHei';fill:#0F172A">53_panel_gateway.py</text>
+  <text x="495" y="528" style="font:13px 'Microsoft YaHei';fill:#334155">校验 / 幂等去重（batch_id）/ gzip 解压</text>
+  <text x="495" y="551" style="font:13px 'Microsoft YaHei';fill:#334155">维护 high/low、成交额估算</text>
+  <text x="495" y="574" style="font:13px 'Microsoft YaHei';fill:#334155">按面板契约输出 JSON（可 gzip）</text>
+  <text x="495" y="604" style="font:600 13px Consolas;fill:#166534">HTTP API</text>
+  <text x="495" y="627" style="font:12px Consolas;fill:#64748B">/panel/realtime   /panel/depth5</text>
+  <text x="495" y="648" style="font:12px Consolas;fill:#64748B">/panel/minute     /panel/daily</text>
+  <text x="495" y="669" style="font:12px Consolas;fill:#64748B">/panel/health</text>
+  <text x="495" y="700" style="font:12px Consolas;fill:#64748B">0.0.0.0:18082</text>
+
+  <!-- db -->
+  <rect x="1030" y="475" width="330" height="270" rx="10" fill="#FFFFFF" stroke="#9CCBAF" stroke-width="1.3"/>
+  <text x="1050" y="502" style="font:600 16px 'Microsoft YaHei';fill:#0F172A">SQLite panel.db</text>
+  <text x="1050" y="530" style="font:13px 'Microsoft YaHei';fill:#334155">panel_state   7,483</text>
+  <text x="1050" y="553" style="font:13px 'Microsoft YaHei';fill:#334155">depth_state   500</text>
+  <text x="1050" y="576" style="font:13px 'Microsoft YaHei';fill:#334155">bars          561,812</text>
+  <text x="1050" y="599" style="font:13px 'Microsoft YaHei';fill:#334155">batches       幂等索引</text>
+  <text x="1050" y="630" style="font:12px Consolas;fill:#64748B">PRIMARY KEY(code, ts)</text>
+  <text x="1050" y="651" style="font:12px Consolas;fill:#64748B">PRIMARY KEY(code, period, time)</text>
+  <text x="1050" y="686" style="font:13px 'Microsoft YaHei';fill:#334155">写多读多，单进程锁串行</text>
+
+  <!-- notes -->
+  <rect x="1395" y="475" width="420" height="270" rx="10" fill="#FFFFFF" stroke="#C9E2D3" stroke-width="1.2"/>
+  <text x="1415" y="502" style="font:600 15px 'Microsoft YaHei';fill:#166534">口径与限制</text>
+  <text x="1415" y="530" style="font:13px 'Microsoft YaHei';fill:#334155">volume = 手 · amount = 元</text>
+  <text x="1415" y="553" style="font:13px 'Microsoft YaHei';fill:#334155">change_pct / turnover = 小数</text>
+  <text x="1415" y="576" style="font:13px 'Microsoft YaHei';fill:#334155">当日 1m 由 6s 快照合成</text>
+  <text x="1415" y="599" style="font:13px 'Microsoft YaHei';fill:#334155">五档通常只有一档</text>
+  <text x="1415" y="622" style="font:13px 'Microsoft YaHei';fill:#334155">逐笔 tick 不提供（需 tdxaidata/L2）</text>
+  <text x="1415" y="655" style="font:12px Consolas;fill:#64748B">realtime 必填：symbol,last_price,</text>
+  <text x="1415" y="676" style="font:12px Consolas;fill:#64748B">prev_close,open,high,low,volume</text>
+
+  <!-- pull arrow moved below container band so it renders on top -->
+
+  <!-- ================= Band 3: Docker ================= -->
+  <rect x="60" y="855" width="1780" height="300" rx="14" fill="#F4EFFF" stroke="#D3C2F2" stroke-width="1.5"/>
+  <text x="82" y="885" style="font:700 19px 'Microsoft YaHei';fill:#5B21B6">③ Docker 容器 tick-stock-panel-app</text>
+
+  <rect x="100" y="905" width="420" height="225" rx="10" fill="#FFFFFF" stroke="#C4B5FD" stroke-width="1.3"/>
+  <text x="120" y="932" style="font:600 16px 'Microsoft YaHei';fill:#0F172A">GenericHTTPProvider</text>
+  <text x="120" y="958" style="font:13px 'Microsoft YaHei';fill:#334155">data/data_sources/tdx_local.yaml</text>
+  <text x="120" y="981" style="font:13px 'Microsoft YaHei';fill:#334155">field_map 必填 · pct_unit=decimal</text>
+  <text x="120" y="1004" style="font:13px 'Microsoft YaHei';fill:#334155">realtime · depth5 · minute · daily</text>
+  <text x="120" y="1027" style="font:13px 'Microsoft YaHei';fill:#334155">必填字段校验（缺列即拒绝加载）</text>
+  <text x="120" y="1058" style="font:12px Consolas;fill:#64748B">auth: X-Api-Key / PANEL_TOKEN</text>
+  <text x="120" y="1079" style="font:12px Consolas;fill:#64748B">response_path: data / data.rows</text>
+  <text x="120" y="1100" style="font:12px Consolas;fill:#64748B">batch: 200 · rpm: 120</text>
+
+  <line x1="520" y1="1017" x2="556" y2="1017" stroke="#64748B" stroke-width="1.6" marker-end="url(#arrGray)"/>
+
+  <rect x="565" y="905" width="380" height="225" rx="10" fill="#FFFFFF" stroke="#C4B5FD" stroke-width="1.3"/>
+  <text x="585" y="932" style="font:600 16px 'Microsoft YaHei';fill:#0F172A">服务层</text>
+  <text x="585" y="960" style="font:13px 'Microsoft YaHei';fill:#334155">quote_service</text>
+  <text x="600" y="981" style="font:12px 'Microsoft YaHei';fill:#64748B">全市场快照 / 当日 live 分区</text>
+  <text x="585" y="1008" style="font:13px 'Microsoft YaHei';fill:#334155">depth_service</text>
+  <text x="600" y="1029" style="font:12px 'Microsoft YaHei';fill:#64748B">仅涨跌停标的的五档</text>
+  <text x="585" y="1056" style="font:13px 'Microsoft YaHei';fill:#334155">kline_sync</text>
+  <text x="600" y="1077" style="font:12px 'Microsoft YaHei';fill:#64748B">分钟 / 日线入库与修补</text>
+  <text x="585" y="1104" style="font:12px Consolas;fill:#64748B">分钟修复轮 / 盘后 15:35</text>
+
+  <line x1="945" y1="1017" x2="981" y2="1017" stroke="#64748B" stroke-width="1.6" marker-end="url(#arrGray)"/>
+
+  <rect x="990" y="905" width="330" height="225" rx="10" fill="#FFFFFF" stroke="#C4B5FD" stroke-width="1.3"/>
+  <text x="1010" y="932" style="font:600 16px 'Microsoft YaHei';fill:#0F172A">存储</text>
+  <text x="1010" y="960" style="font:13px 'Microsoft YaHei';fill:#334155">Parquet</text>
+  <text x="1025" y="981" style="font:12px Consolas;fill:#64748B">kline_daily / kline_minute</text>
+  <text x="1010" y="1008" style="font:13px 'Microsoft YaHei';fill:#334155">DuckDB 内存视图</text>
+  <text x="1025" y="1029" style="font:12px Consolas;fill:#64748B">read_parquet</text>
+  <text x="1010" y="1056" style="font:13px 'Microsoft YaHei';fill:#334155">live daily partition</text>
+  <text x="1025" y="1077" style="font:12px 'Microsoft YaHei';fill:#64748B">实时快照覆写当日分区</text>
+  <text x="1010" y="1104" style="font:12px Consolas;fill:#64748B">data/（bind mount）</text>
+
+  <line x1="1320" y1="1017" x2="1356" y2="1017" stroke="#64748B" stroke-width="1.6" marker-end="url(#arrGray)"/>
+
+  <rect x="1365" y="905" width="455" height="225" rx="10" fill="#FFFFFF" stroke="#C4B5FD" stroke-width="1.3"/>
+  <text x="1385" y="932" style="font:600 16px 'Microsoft YaHei';fill:#0F172A">FastAPI :3018</text>
+  <text x="1385" y="960" style="font:13px 'Microsoft YaHei';fill:#334155">REST /api/*</text>
+  <text x="1385" y="983" style="font:12px Consolas;fill:#64748B">/api/settings/data-sources/*</text>
+  <text x="1385" y="1004" style="font:12px Consolas;fill:#64748B">/api/intraday/status · /refresh</text>
+  <text x="1385" y="1025" style="font:12px Consolas;fill:#64748B">/api/data/integrity · /repair</text>
+  <text x="1385" y="1052" style="font:13px 'Microsoft YaHei';fill:#334155">SSE /api/intraday/stream</text>
+  <text x="1385" y="1075" style="font:12px 'Microsoft YaHei';fill:#64748B">quotes_updated · depth_updated</text>
+  <text x="1385" y="1100" style="font:12px Consolas;fill:#64748B">0.0.0.0:3018（宿主映射）</text>
+
+  <!-- pull elbow (after container band so it renders above the band fill) -->
+  <path d="M735,745 L735,805 L470,805 L470,903" fill="none" stroke="#16A34A" stroke-width="3" stroke-dasharray="9 6" marker-end="url(#arrGreen)"/>
+  <text x="500" y="790" style="font:600 15px Consolas;fill:#15803D">HTTP GET（拉取）</text>
+  <text x="500" y="827" style="font:13px 'Microsoft YaHei';fill:#15803D">实时 10s · 五档 10s · 分钟按需 · 日线 15:35</text>
+  <text x="500" y="849" style="font:12px Consolas;fill:#15803D">容器 → 172.25.0.1:18082（127.0.0.1 ≠ 宿主机）</text>
+
+  <!-- SSE -->
+  <line x1="1592" y1="1130" x2="1592" y2="1208" stroke="#9333EA" stroke-width="2.5" stroke-dasharray="2 6" marker-end="url(#arrPurple)"/>
+  <text x="1612" y="1168" style="font:13px 'Microsoft YaHei';fill:#7E22CE">SSE 事件推送</text>
+
+  <!-- ================= Band 4: browser ================= -->
+  <rect x="60" y="1210" width="1780" height="120" rx="14" fill="#FFF6E8" stroke="#F0D3A6" stroke-width="1.5"/>
+  <text x="82" y="1240" style="font:700 19px 'Microsoft YaHei';fill:#92400E">④ 浏览器</text>
+  <rect x="100" y="1252" width="1700" height="60" rx="10" fill="#FFFFFF" stroke="#E7C08C" stroke-width="1.3"/>
+  <text x="120" y="1278" style="font:14px 'Microsoft YaHei';fill:#334155">React 前端（dev :3011，prod 由后端托管）：报价墙 · 分时 · 五档 · 自选 · 选股 · 数据健康</text>
+  <text x="120" y="1299" style="font:12px Consolas;fill:#64748B">EventSource('/api/intraday/stream') → 失效 TanStack Query 缓存 → 重新拉取</text>
+
+  <!-- legend -->
+  <line x1="60" y1="1358" x2="110" y2="1358" stroke="#2563EB" stroke-width="4" marker-end="url(#arrBlue)"/>
+  <text x="120" y="1363" style="font:13px 'Microsoft YaHei';fill:#334155">推送 push（Windows → Linux）</text>
+
+  <line x1="390" y1="1358" x2="440" y2="1358" stroke="#16A34A" stroke-width="3" stroke-dasharray="9 6" marker-end="url(#arrGreen)"/>
+  <text x="450" y="1363" style="font:13px 'Microsoft YaHei';fill:#334155">拉取 pull（容器 → 网关）</text>
+
+  <line x1="700" y1="1358" x2="750" y2="1358" stroke="#9333EA" stroke-width="2.5" stroke-dasharray="2 6" marker-end="url(#arrPurple)"/>
+  <text x="760" y="1363" style="font:13px 'Microsoft YaHei';fill:#334155">SSE（后端 → 浏览器）</text>
+
+  <text x="1080" y="1363" style="font:12px 'Microsoft YaHei';fill:#94A3B8">注：逐笔 tick 不在本链路（本地客户端不提供），其余行情全部本地化</text>
+</svg>
