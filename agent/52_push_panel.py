@@ -283,6 +283,14 @@ def main() -> int:
             except Exception as exc:  # noqa: BLE001
                 print(f"include market {m} failed: {exc}")
         codes = list(dict.fromkeys(codes))
+    # market 9 不含 000001.SH / 000002.SH / 399107.SZ 等标准指数代码，
+    # 用 --daily-codes 显式并入实时池，否则面板市场看板拿不到上证指数。
+    extra_codes: list[str] = []
+    if args.daily_codes:
+        extra_codes = [c.strip() for c in args.daily_codes.split(",") if c.strip()]
+        if extra_codes:
+            codes = list(dict.fromkeys(codes + extra_codes))
+            print(f"extra realtime codes: {extra_codes}")
     if args.limit:
         codes = codes[: args.limit]
     depth_codes = (tq.get_stock_list(args.depth_market) or [])[: args.depth_limit]
@@ -338,6 +346,16 @@ def main() -> int:
                 print(f"seed {i + len(chunk)}/{len(snapshots)} ok={r.get('accepted')}")
             except Exception as exc:  # noqa: BLE001
                 print(f"seed push failed: {exc}")
+    elif extra_codes:
+        # --no-seed 时仍为补充指数推一次完整快照，否则 prev_close/amount 为空，
+        # 涨跌幅算不出来，市场看板显示 "-"。
+        extra_snaps = [r for r in (snap_row(c) for c in extra_codes) if r]
+        if extra_snaps:
+            try:
+                r = push(args.receiver, args.token, "panel_seed", extra_snaps)
+                print(f"seed extra codes={len(extra_snaps)} ok={r.get('accepted')}")
+            except Exception as exc:  # noqa: BLE001
+                print(f"seed extra push failed: {exc}")
 
     # 3) 历史 1 分钟线（本地数据只到上一交易日，先补齐）
     if not args.no_minute and minute_codes:
