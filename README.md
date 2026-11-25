@@ -13,6 +13,7 @@
 | `agent/52_push_panel.py` | Windows | 从 tqcenter 取数，主动 push（gzip + token） |
 | `gateway/53_panel_gateway.py` | Linux | 接收、幂等落 SQLite、按面板契约输出 HTTP |
 | `tools/54_check_panel_contract.py` | 任意 | 契约自检 |
+| `tools/55_test_panel_gateway.py` | 任意 | 网关口径回归测试（asset_type / 成交额 / 别名） |
 | `deploy/tick-stock-panel/data_sources_tdx_local.yaml` | 面板 | 数据源配置（放入 `data/data_sources/`） |
 
 ## 快速开始
@@ -83,7 +84,7 @@ curl -X PUT  http://127.0.0.1:3018/api/settings/preferences/data-providers \
 
 | 数据集 | 频率 | 关键字段 |
 |---|---|---|
-| realtime | 6s 推 / 10s 拉 | symbol, last_price, prev_close, open, high, low, volume, amount, **timestamp** |
+| realtime | 6s 推 / 10s 拉 | symbol, asset_type, last_price, prev_close, open, high, low, volume, amount, **timestamp** |
 | depth5 | 10s | asks/bids = `[[价, 手]×5]` |
 | minute | 每分钟 | symbol, datetime, OHLC, volume, amount |
 | daily | 15:10 推 / 15:35 拉 | symbol, date, OHLC, volume, amount |
@@ -92,10 +93,21 @@ curl -X PUT  http://127.0.0.1:3018/api/settings/preferences/data-providers \
 - `volume` 单位手、`amount` 单位元、`change_pct` 小数
 - **`timestamp` 必须在 YAML `field_map` 中映射**，否则面板 `quote_ts` 为空，自选列表显示「时间未确认」
 - realtime 必须是**全市场**（面板会用全量行覆写当日 live 分区）
+- `asset_type`：`stock / etf / index / board / bond / reit / other`；可用
+  `?asset_type=stock` 只取股票，避免指数/板块混入成交额
+- `amount` 只对 stock/etf 当日累计；index/board 由成分股汇总，全量快照默认返回
+  `null`，显式 `?asset_type=index,board` 或 `?symbols=指数代码` 才返回汇总值
+- 999999.SH 入库时归一为 000001.SH；指数 volume 统一折算为手
+- 维表端点：`GET /panel/instruments?asset_type=stock,etf`
+- 口径自检：`GET /panel/audit`
 
 ## 关键设计
 
 - **增量推送**：只推变化行；另发 `panel_beat` 心跳更新全市场行情时间，避免无成交个股显示「更新延迟」
+- **资产口径**：每条快照带 `asset_type`；index/board 成交额按成分股汇总，禁止用 `volume × 指数点位` 回填
+- **TQ 串行化**：`get_market_snapshot` 并发调用会串代码（实测 1,000 只 8 线程出现 `000002.SZ` 拿到 `000010.SZ` 的数据），采集端用 `TQ_LOCK` 串行化
+- **盘前 seed**：09:25 前快照可能还是上一交易日累计量/额，seed 统一归零；同日 seed 以快照为准覆盖
+- **指数成分**：采集端通过 `get_stock_list_in_sector` 推送 `panel_members`，并过滤标准指数返回的同一组 6 只假成分
 - **幂等**：`batch_id` 去重；`(code, ts)` / `(code, period, time)` 主键
 - **停牌兜底**：无快照标的用 `get_pricevol` 补齐，保证全市场行数
 - **当日 1 分钟线**：本地 1m 只到上一交易日，当日由 6s 快照合成（标签对齐通达信）

@@ -33,6 +33,11 @@ PANEL_TOKEN=your-secret PORT=18082 TICK_PANEL_HOME=~/tick-panel \
 
 模板见 `systemd/tdx-panel-gateway.service`、`systemd/tdx-panel-refresh.timer`、`tick-stock-panel/tdx-panel-instruments.timer`、`env/gateway.env.example`。
 
+> 2026-11-25 起 `/panel/realtime` 每条记录带 `asset_type`；全量快照的
+> `index/board amount` 默认为 `null`，避免消费方直接求和时重复计入。
+> 部署后建议执行 `python tools/55_test_panel_gateway.py` 与
+> `GET /panel/audit` 校验成交额口径。
+
 ## Windows（采集代理）
 
 ```powershell

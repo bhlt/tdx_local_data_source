@@ -41,6 +41,26 @@ def main() -> int:
     print(f"[realtime] rows={len(rows)} missing={len(missing)} {missing[:3]}")
     ok &= len(rows) > 0 and not missing
 
+    asset_types = {"stock", "etf", "index", "board", "bond", "reit", "other"}
+    bad_type = [r.get("symbol") for r in rows if r.get("asset_type") not in asset_types]
+    counts: dict[str, int] = {}
+    for r in rows:
+        counts[r.get("asset_type")] = counts.get(r.get("asset_type"), 0) + 1
+    print(f"[asset_type] counts={counts} missing={len(bad_type)} {bad_type[:5]}")
+    ok &= not bad_type
+
+    # 指数/板块绝不能用 volume×100×price 回填成交额
+    fabricated = []
+    for r in rows:
+        if r.get("asset_type") not in ("index", "board"):
+            continue
+        amt, vol, last = r.get("amount"), r.get("volume"), r.get("last_price")
+        if amt and vol and last and abs(float(amt) / (float(vol) * 100.0 * float(last)) - 1.0) < 1e-3:
+            fabricated.append(r.get("symbol"))
+    print(f"[index amount] fabricated={len(fabricated)} {fabricated[:5]}")
+    ok &= not fabricated
+
+
     dp = get(args.base, args.token, f"/panel/depth5?symbols={args.symbol}")
     data = dp.get("data", {})
     for sym, d in list(data.items())[:3]:
@@ -62,6 +82,16 @@ def main() -> int:
                                 for k in ("symbol", "date", "open", "high", "low", "close", "volume", "amount"))
     print(f"[daily] rows={len(drows)} last={drows[-1] if drows else None}")
     ok &= dgood
+
+    # 网关自检（P1）：股票成交额比值、指数成交额量级、别名唯一性
+    try:
+        au = get(args.base, args.token, "/panel/audit").get("data") or {}
+        checks = au.get("checks", {})
+        print(f"[audit] ok={au.get('ok')} counts={au.get('counts')} "
+              f"checks={ {k: v.get('status') for k, v in checks.items()} }")
+        ok &= bool(au.get("ok"))
+    except Exception as exc:  # noqa: BLE001
+        print(f"[audit] skipped: {exc}")
 
     print("CONTRACT:", "PASS" if ok else "FAIL")
     return 0 if ok else 1

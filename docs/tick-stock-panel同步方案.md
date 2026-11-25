@@ -56,15 +56,28 @@ Windows（通达信已登录）                    SC_Linux
 ### realtime（全市场）
 
 ```json
-{"symbol":"000001.SZ","name":"平安银行","last_price":12.03,"prev_close":12.04,
+{"symbol":"000001.SZ","name":"平安银行","asset_type":"stock",
+ "last_price":12.03,"prev_close":12.04,
  "open":11.99,"high":12.08,"low":11.91,"volume":859477,"amount":1034000000,
+ "amount_source":"realtime_delta",
  "change_pct":-0.00083,"amplitude":0.0141,"turnover_rate":0.0044,"timestamp":1795142904517}
 ```
 
 - 必填：`symbol, last_price, prev_close, open, high, low, volume`（面板 `_REQUIRED` 校验）
 - **`timestamp` 必须在 YAML 的 `field_map` 中显式映射**，否则面板落盘时 `quote_ts` 为空，自选列表会显示「时间未确认」
 - 单位：`volume=手`、`amount=元`、`change_pct/amplitude/turnover_rate` 为**小数**
-- 全市场约 **5584 行**，面板建议单响应 ≤6000 行
+- `asset_type`：`stock / etf / index / board / bond / reit / other`；面板可直接用
+  `GET /panel/realtime?asset_type=stock` 只取股票
+- `amount` 只对 `stock / etf` 当日累计；`index / board` 的 `amount` 由成分股成交额汇总
+  （`amount_source=constituents`），没有成分映射时为 `null`，**绝不用 volume×price 回填**；
+  全量快照默认 `index/board amount=null`（避免直接求和重复计入），显式
+  `?asset_type=index,board` 或 `?symbols=指数代码` 才返回汇总值
+- 指数/板块的 `volume` 入站时由「股」折算为「手」，与 `daily` 一致
+- 同一指数的别名只保留规范代码：`999999.SH` 入库时归一为 `000001.SH`
+- 新增 `GET /panel/instruments?asset_type=stock,etf`：返回 symbol / name / asset_type /
+  exchange / float_shares，便于面板对齐 ETF 维表
+- 新增 `GET /panel/audit`：检查股票成交额比值（0.8~1.2）、指数成交额量级、别名唯一性
+- 全市场约 **5584 行（stock）**，面板建议单响应 ≤6000 行
 
 ### depth5
 
