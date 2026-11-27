@@ -14,6 +14,8 @@
 | `gateway/53_panel_gateway.py` | Linux | 接收、幂等落 SQLite、按面板契约输出 HTTP |
 | `tools/54_check_panel_contract.py` | 任意 | 契约自检 |
 | `tools/55_test_panel_gateway.py` | 任意 | 网关口径回归测试（asset_type / 成交额 / 别名） |
+| `tools/64_archive_minute.py` | Windows | 全市场 1m/5m 按日落 Parquet |
+| `tools/65_upload_minute.py` | Windows | 本地分钟分区补传网关（`bars_final`） |
 | `deploy/tick-stock-panel/data_sources_tdx_local.yaml` | 面板 | 数据源配置（放入 `data/data_sources/`） |
 
 ## 快速开始
@@ -61,7 +63,11 @@ python agent\52_push_panel.py ^
   --minute-market 24 --minute-limit 500 ^
   --daily-auto --daily-markets 5,31,9 ^
   --daily-codes 000001.SH,000002.SH,399107.SZ --daily-count 30 ^
-  --no-seed
+  --seed-at 09:20 ^
+  --minute-archive-at 08:30,15:45 --minute-archive-days 3 ^
+  --minute-archive-out data/minute ^
+  --minute-upload --minute-upload-days 3 --minute-upload-periods 1m,5m ^
+  --live-minute-all
 ```
 
 `agent/52_push_panel.cmd.example` 是带自动重启的循环模板，复制为 `.cmd` 后改三处即可。
@@ -112,6 +118,7 @@ curl -X PUT  http://127.0.0.1:3018/api/settings/preferences/data-providers \
 - **停牌兜底**：无快照标的用 `get_pricevol` 补齐，保证全市场行数
 - **当日 1 分钟线**：本地 1m 只到上一交易日，当日由 6s 快照合成（标签对齐通达信）
 - **分钟落库**：`tools/64_archive_minute.py` 把全市场 1m/5m 按日写成 Parquet；客户端分钟线约保留 3 个月，当天要等次日凌晨下载，因此按“缺失分区”回补
+- **分钟补传**：`tools/65_upload_minute.py` 把本地分区 gzip 分批 POST 到 `/ingest`（`kind=bars_final`），覆盖盘中快照合成的近似 bar；`/panel/minute` 目前只服务 1m
 - **零第三方依赖**：网关与代理都只用标准库（分钟落库可选依赖 `pyarrow`）
 
 ## 已知限制

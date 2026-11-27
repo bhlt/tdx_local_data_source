@@ -52,6 +52,7 @@ powershell -ExecutionPolicy Bypass -File deploy\windows\install-startup.ps1 `
 1. 生成 `agent/52_push_panel.cmd`（含 token、循环重启、日志重定向）
 2. 在用户启动目录放置 `tdx-panel-push.cmd`
 3. 立即启动一次（`-NoStart` 可跳过）
+4. 默认参数包含 `--seed-at 09:20`、08:30/15:45 分钟落库与补传、`--live-minute-all`
 
 ### 全市场分钟落库
 
@@ -78,7 +79,14 @@ python tools/64_archive_minute.py --periods 5m --days 90
 
 依赖 `pyarrow`（Parquet）。没有时脚本自动退回 `.csv.gz`（体积约 5 倍）。
 
-> 落库只做本地研究，不推给面板；面板的 minute 数据集仍是代理实时合成的 500 只。
+> 落库本身只写本地 Parquet；代理加 `--minute-upload` 时会把分区补传到网关
+> （`kind=bars_final`，覆盖盘中合成 bar）。`/panel/minute` 目前只服务 1m，5m 暂存库中。
+>
+> 手工补传：
+>
+> ```powershell
+> python tools/65_upload_minute.py --gateway http://<linux-ip>:18082 --days 3 --periods 1m,5m
+> ```
 
 > 使用用户启动目录而不是计划任务，是因为创建 ONLOGON 计划任务通常需要管理员权限。
 

@@ -305,15 +305,22 @@ def push_daily(receiver: str, token: str, codes: list[str], count: int) -> int:
     return len(drows)
 
 
+def _find_tool(name: str) -> str | None:
+    """兼容 scripts/（开发仓库）与 tools/（发布仓库）两种目录布局。"""
+    here = os.path.dirname(os.path.abspath(__file__))
+    root = os.path.dirname(here)
+    for path in (os.path.join(here, name),
+                 os.path.join(root, "scripts", name),
+                 os.path.join(root, "tools", name)):
+        if os.path.exists(path):
+            return path
+    return None
+
+
 def start_minute_archive(args) -> subprocess.Popen:
     """异步启动全市场分钟落库，不阻塞实时推送。"""
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    candidates = [
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "64_archive_minute.py"),
-        os.path.join(root, "scripts", "64_archive_minute.py"),
-        os.path.join(root, "tools", "64_archive_minute.py"),
-    ]
-    script = next((p for p in candidates if os.path.exists(p)), None)
+    script = _find_tool("64_archive_minute.py")
     if not script:
         raise FileNotFoundError("64_archive_minute.py")
     out_dir = args.minute_archive_out
@@ -331,10 +338,11 @@ def start_minute_archive(args) -> subprocess.Popen:
 
 def start_minute_upload(args) -> subprocess.Popen:
     """把本地分钟分区补传到网关（只读文件 + HTTP，不占用 TQ 连接）。"""
-    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "65_upload_minute.py")
-    if not os.path.exists(script):
+    script = _find_tool("65_upload_minute.py")
+    if not script:
         raise FileNotFoundError("65_upload_minute.py")
-    log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(script))), "reports")
+    root = os.path.dirname(os.path.dirname(os.path.abspath(script)))
+    log_dir = os.path.join(root, "reports")
     os.makedirs(log_dir, exist_ok=True)
     log = open(os.path.join(log_dir, "minute_upload.log"), "a", encoding="utf-8")
     cmd = [sys.executable, script,
@@ -346,7 +354,7 @@ def start_minute_upload(args) -> subprocess.Popen:
     print(f"minute upload start: {' '.join(cmd)}")
     # token 走环境变量，避免出现在进程命令行和日志里
     return subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT,
-                            cwd=os.path.dirname(os.path.dirname(os.path.abspath(script))),
+                            cwd=root,
                             env={**os.environ, "PANEL_TOKEN": args.token})
 
 

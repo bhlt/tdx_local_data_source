@@ -66,6 +66,9 @@ def parse_args() -> argparse.Namespace:
                     help="输出格式；auto 优先 parquet，缺少依赖时用 csv.gz")
     ap.add_argument("--raw-units", action="store_true",
                     help="保留接口原始单位（股/万元），默认换算为手/元")
+    ap.add_argument("--include-today", action="store_true",
+                    help="包含当天（默认跳过：当天分钟要次日凌晨才下载完整，"
+                         "盘中抓取会落半截且此后不会自动覆盖）")
     return ap.parse_args()
 
 
@@ -237,6 +240,14 @@ def main() -> int:
             end = date.today()
             start = end - timedelta(days=max(args.days, 1))
             days = trading_days(start, end)
+            # 当天分钟要等次日凌晨下载完整，盘中抓取只会得到半截数据，
+            # 且分区一旦存在后续默认 skip，故默认跳过当天。
+            if not args.include_today:
+                skipped = [d for d in days if d >= end]
+                days = [d for d in days if d < end]
+                if skipped:
+                    print(f"跳过当天 {', '.join(str(d) for d in skipped)}"
+                          "（次日 08:30 自动补齐）", flush=True)
         print(f"待处理交易日: {len(days)}  {days[0]} ~ {days[-1]}", flush=True)
 
         total = 0
